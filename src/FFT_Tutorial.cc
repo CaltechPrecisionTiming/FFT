@@ -4,21 +4,21 @@
 #include "TCanvas.h"
 #include "TMath.h"
 
-void FFT()
+void FFT_Tutorial()
 {
 
 //This tutorial illustrates the Fast Fourier Transforms interface in ROOT.
 //FFT transform types provided in ROOT:
-// - "C2CFORWARD" - a complex input/output discrete Fourier transform (DFT) 
+// - "C2CFORWARD" - a complex input/output discrete Fourier transform (DFT)
 //                  in one or more dimensions, -1 in the exponent
-// - "C2CBACKWARD"- a complex input/output discrete Fourier transform (DFT) 
+// - "C2CBACKWARD"- a complex input/output discrete Fourier transform (DFT)
 //                  in one or more dimensions, +1 in the exponent
 // - "R2C"        - a real-input/complex-output discrete Fourier transform (DFT)
 //                  in one or more dimensions,
-// - "C2R"        - inverse transforms to "R2C", taking complex input 
-//                  (storing the non-redundant half of a logically Hermitian array) 
+// - "C2R"        - inverse transforms to "R2C", taking complex input
+//                  (storing the non-redundant half of a logically Hermitian array)
 //                  to real output
-// - "R2HC"       - a real-input DFT with output in ¡Èhalfcomplex¡É format, 
+// - "R2HC"       - a real-input DFT with output in ¡Èhalfcomplex¡É format,
 //                  i.e. real and imaginary parts for a transform of size n stored as
 //                  r0, r1, r2, ..., rn/2, i(n+1)/2-1, ..., i2, i1
 // - "HC2R"       - computes the reverse of FFTW_R2HC, above
@@ -67,53 +67,24 @@ void FFT()
    c1_5->SetFrameFillColor(42);
    c1_6->SetFillColor(30);
    c1_6->SetFrameFillColor(42);
-   
+
    c1_1->cd();
    TH1::AddDirectory(kFALSE);
-     
+
    //A function to sample
-   //TF1 *fsin = new TF1("fsin", "sin(x)+sin(2*x)", 0, 4*TMath::Pi());
-   TF1 *fsin = new TF1("fsin", "exp(-(x-679.)/40.0)*TMath::Erfc(-(1/sqrt(2))*((x-679.)/2.0 + 0.05))", 0, 1023);
-   TF1 *model = new TF1("model", "[0]*exp(-(x-[1])/[2])*TMath::Erfc(-(1/sqrt(2))*((x-[1])/[3] + [3]/[2]))", 0, 1023);
-   model->SetParameter( 0, 1. );
-   model->SetParameter( 1, 679. );
-   model->SetParameter( 2, 40. );
-   model->SetParameter( 3, 2. );
-   model->SetLineColor( kViolet );
-   //fsin->Draw();
-   
-   Int_t n=1024;
-   TH1D *hsin = new TH1D("hsin", "hsin", n+1, 0, 1023);
+   TF1 *fsin = new TF1("fsin", "sin(2*TMath::Pi()*x)+sin(4*TMath::Pi()*x)+sin(6*TMath::Pi()*x)", 0, 4*TMath::Pi());
+   fsin->Draw();
+
+   Int_t n=25000;
+   TH1D *hsin = new TH1D("hsin", "hsin", n+1, 0, 4*TMath::Pi());
    Double_t x;
-   //hsin->Fit( model,"MLR" );
+
    //Fill the histogram with function values
    for (Int_t i=0; i<=n; i++){
-     /*
-     if( i >= n/2 )
-       {
-	 x = (Double_t(i-(n/2+1))/n)*(160*TMath::Pi());
-       }
-     else
-       {
-	 x = -80*TMath::Pi()+(Double_t(i)/n)*(160*TMath::Pi());
-       }
-     */
-     x = (Double_t(i)/n)*(1024);
-     //std::cout << "n: " << i << " x: " << x << std::endl;
-     hsin->SetBinContent(i+1, fsin->Eval(x));
+      x = (Double_t(i)/n)*(4*TMath::Pi());
+      hsin->SetBinContent(i+1, fsin->Eval(x));
    }
-   
-   hsin->Fit( model,"MLR" );
-   //TFile* fn = new TFile("/Users/cmorgoth/Software/git/TimingAna_New/CIT_Laser_022015_69_ana.root", "READ");
-   TFile* fn = new TFile("/Users/cmorgoth/Work/data/LaserDataAtCaltech/02282015/CIT_Laser_022015_69_ana.root", "READ");
-   TH1F* pulse = (TH1F*)fn->Get("CH2pulse");
-   //hsin->Draw("same");
-   hsin->SetLineColor(kGreen-4);
-   hsin->Draw();
-   model->Draw("same");
-   //pulse->SetAxisRange(650, 780, "X");
-   pulse->Scale(22.0);
-   pulse->Draw("same");
+   hsin->Draw("same");
    fsin->GetXaxis()->SetLabelSize(0.05);
    fsin->GetYaxis()->SetLabelSize(0.05);
 
@@ -121,43 +92,25 @@ void FFT()
    //Compute the transform and look at the magnitude of the output
    TH1 *hm =0;
    TVirtualFFT::SetTransform(0);
-   //hm = hsin->FFT(hm, "MAG");
-   hm = pulse->FFT(hm, "MAG");
+   hm = hsin->FFT(hm, "MAG");
    hm->SetTitle("Magnitude of the 1st transform");
    //hm->Draw();
-   double sf = 5e3;//to go from sample to picosecons and also from Hz to MHz
-   double range = sf*(double)n/(1023.);
+   //NOTE: for "real" frequencies you have to divide the x-axes range with the range of your function
+   //(in this case 4*Pi); y-axes has to be rescaled by a factor of 1/SQRT(n) to be right: this is not done automatically!
    int n_bin_fft = hm->GetNbinsX();
-   TH1F* hmr = new TH1F( "hmr" ,"Magnitude of the 1st transform Rescaled", n_bin_fft, 0, range);
+   TH1F* hmr = new TH1F( "hmr" ,"Magnitude of the 1st transform Rescaled", n_bin_fft, 0, (double)n/(4.0*TMath::Pi()));
    for( int i = 1; i <= n_bin_fft; i++)
      {
        double bc = hm->GetBinContent( i )/sqrt( n );
        hmr->SetBinContent( i, bc );
      }
-   hmr->SetXTitle("f (MHz)");
+
    hmr->Draw();
-   //Transfor to the theoretical function
-   TH1 *hm2 =0;
-   TVirtualFFT::SetTransform(0);
-   hm2 = hsin->FFT(hm2, "MAG");
-   hm2->SetLineColor(2);
-   //hm2->Draw("same");
-   TH1F* hmr2 = new TH1F( "hmr2" ,"Magnitude of the 1st transform Rescaled", n_bin_fft, 0, range);
-   for( int i = 1; i <= n_bin_fft; i++)
-     {
-       double bc = hm2->GetBinContent( i )/sqrt( n );
-       hmr2->SetBinContent( i, bc );
-     }
-   hmr2->SetLineColor( kRed );
-   hmr2->Draw("same");
-   //NOTE: for "real" frequencies you have to divide the x-axes range with the range of your function 
-   //(in this case 4*Pi); y-axes has to be rescaled by a factor of 1/SQRT(n) to be right: this is not done automatically!
-   
    hm->SetStats(kFALSE);
    hm->GetXaxis()->SetLabelSize(0.05);
    hm->GetYaxis()->SetLabelSize(0.05);
-   c1_3->cd();   
-   //Look at the phase of the output   
+   c1_3->cd();
+   //Look at the phase of the output
    TH1 *hp = 0;
    hp = hsin->FFT(hp, "PH");
    hp->SetTitle("Phase of the 1st transform");
@@ -165,7 +118,7 @@ void FFT()
    hp->SetStats(kFALSE);
    hp->GetXaxis()->SetLabelSize(0.05);
    hp->GetYaxis()->SetLabelSize(0.05);
-   
+
    //Look at the DC component and the Nyquist harmonic:
    Double_t re, im;
    //That's the way to get the current transform object:
@@ -181,7 +134,7 @@ void FFT()
    Double_t *re_full = new Double_t[n];
    Double_t *im_full = new Double_t[n];
    fft->GetPointsComplex(re_full,im_full);
-  
+
    //Now let's make a backward transform:
    TVirtualFFT *fft_back = TVirtualFFT::FFT(1, &n, "C2R M K");
    fft_back->SetPointsComplex(re_full,im_full);
@@ -192,7 +145,7 @@ void FFT()
    hb->SetTitle("The backward transform result");
    hb->Draw();
    //NOTE: here you get at the x-axes number of bins and not real values
-   //(in this case 25 bins has to be rescaled to a range between 0 and 4*Pi; 
+   //(in this case 25 bins has to be rescaled to a range between 0 and 4*Pi;
    //also here the y-axes has to be rescaled (factor 1/bins)
    hb->SetStats(kFALSE);
    hb->GetXaxis()->SetLabelSize(0.05);
@@ -203,7 +156,7 @@ void FFT()
 //********* Data array - same transform ********//
 
    //Allocate an array big enough to hold the transform output
-   //Transform output in 1d contains, for a transform of size N, 
+   //Transform output in 1d contains, for a transform of size N,
    //N/2+1 complex numbers, i.e. 2*(N/2+1) real numbers
    //our transform is of size n+1, because the histogram has n+1 bins
 
@@ -218,7 +171,7 @@ void FFT()
    //Third parameter (option) consists of 3 parts:
    //-transform type:
    // real input/complex output in our case
-   //-transform flag: 
+   //-transform flag:
    // the amount of time spent in planning
    // the transform (see TVirtualFFT class description)
    //-to create a new TVirtualFFT object (option "K") or use the global (default)
