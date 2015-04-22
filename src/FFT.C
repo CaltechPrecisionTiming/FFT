@@ -72,7 +72,6 @@ void FFT()
    TH1::AddDirectory(kFALSE);
      
    //A function to sample
-   //TF1 *fsin = new TF1("fsin", "sin(x)+sin(2*x)", 0, 4*TMath::Pi());
    TF1 *fsin = new TF1("fsin", "exp(-(x-679.)/40.0)*TMath::Erfc(-(1/sqrt(2))*((x-679.)/2.0 + 0.05))", 0, 1023);
    TF1 *model = new TF1("model", "[0]*exp(-(x-[1])/[2])*TMath::Erfc(-(1/sqrt(2))*((x-[1])/[3] + [3]/[2]))", 0, 1023);
    model->SetParameter( 0, 1. );
@@ -80,6 +79,15 @@ void FFT()
    model->SetParameter( 2, 40. );
    model->SetParameter( 3, 2. );
    model->SetLineColor( kViolet );
+   
+   TF1 *model2 = new TF1("model2", "[0]*exp(-(x-[1])/[2])*TMath::Erfc(-(1/sqrt(2))*((x-[1])/[3] + [3]/[2])) + [4]*sin(2*TMath::Pi()*[5]*x)", 0, 1023);
+   model2->SetParameter( 0, 1. );
+   model2->SetParameter( 1, 679. );
+   model2->SetParameter( 2, 40. );
+   model2->SetParameter( 3, 2. );
+   model2->SetParameter( 4, 0.05 );
+   model2->SetParameter( 5, 2. );
+   model2->SetLineColor( kViolet );
    //fsin->Draw();
    
    Int_t n=1024;
@@ -103,7 +111,7 @@ void FFT()
      hsin->SetBinContent(i+1, fsin->Eval(x));
    }
    
-   hsin->Fit( model,"MLR" );
+   hsin->Fit( model2,"MLR" );
    //TFile* fn = new TFile("/Users/cmorgoth/Software/git/TimingAna_New/CIT_Laser_022015_69_ana.root", "READ");
    TFile* fn = new TFile("/Users/cmorgoth/Work/data/LaserDataAtCaltech/02282015/CIT_Laser_022015_69_ana.root", "READ");
    TH1F* pulse = (TH1F*)fn->Get("CH2pulse");
@@ -152,10 +160,11 @@ void FFT()
    hmr2->Draw("same");
    //NOTE: for "real" frequencies you have to divide the x-axes range with the range of your function 
    //(in this case 4*Pi); y-axes has to be rescaled by a factor of 1/SQRT(n) to be right: this is not done automatically!
-   
    hm->SetStats(kFALSE);
    hm->GetXaxis()->SetLabelSize(0.05);
    hm->GetYaxis()->SetLabelSize(0.05);
+
+   
    c1_3->cd();   
    //Look at the phase of the output   
    TH1 *hp = 0;
